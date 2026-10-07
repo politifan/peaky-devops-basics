@@ -19,6 +19,8 @@ jobs:
         with:
           go-version-file: runtime/go.mod
           cache-dependency-path: runtime/go.sum
+      - name: Verify command examples
+        run: bash practice/verify-command-examples.sh | tee command-examples.txt
       - name: Runtime tests
         working-directory: runtime
         run: go test ./...
@@ -28,6 +30,8 @@ jobs:
           cd runtime
           CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-good" -o ../dist/ticketlab .
           CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-write -X main.defect=bad-write" -o ../dist/ticketlab-bad-write .
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-body -X main.defect=bad-body" -o ../dist/ticketlab-bad-body .
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-retry -X main.defect=bad-retry" -o ../dist/ticketlab-bad-retry .
           cp ../dist/ticketlab ../dist/labcheck
           cp ../dist/ticketlab ../dist/labctl
           cd ..
@@ -42,8 +46,10 @@ jobs:
         run: |
           cp README.md Dockerfile compose.yaml dist/
           cp -r practice dist/
+          (cd dist && sha256sum ticketlab ticketlab-bad-* labcheck labctl > SHA256SUMS)
           tar -czf ticketlab-linux-amd64.tar.gz -C dist .
-          sha256sum ticketlab-linux-amd64.tar.gz > SHA256SUMS
+          docker save ticketlab:check | gzip > ticketlab-image.tar.gz
+          sha256sum ticketlab-linux-amd64.tar.gz ticketlab-image.tar.gz > SHA256SUMS
       - name: Publish verified image
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
@@ -61,6 +67,8 @@ jobs:
           name: course-kit-and-evidence
           path: |
             ticketlab-linux-amd64.tar.gz
+            ticketlab-image.tar.gz
+            command-examples.txt
             SHA256SUMS
             reports/
           retention-days: 14
