@@ -5,6 +5,7 @@ export TICKETLAB_PORT=18983
 mkdir -p reports
 work=$(mktemp -d)
 cleanup() {
+  docker compose -p "$COMPOSE_PROJECT_NAME" logs --no-color > reports/postgres-compose.log 2>&1 || true
   docker compose -p "$COMPOSE_PROJECT_NAME" down -v --remove-orphans > "$work/cleanup.log" 2>&1 || cat "$work/cleanup.log"
   rm -rf -- "$work"
 }
