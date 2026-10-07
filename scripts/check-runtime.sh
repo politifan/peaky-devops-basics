@@ -24,7 +24,7 @@ jq -e --arg sha "$GITHUB_SHA" '.source_revision == $sha and .instance_id == "ci-
 code=$(curl -sS -o reports/created.json -w '%{http_code}' -H 'Content-Type: application/json' -H 'Idempotency-Key: ci-one' -d '{"title":"CI сохраняет заявку"}' http://127.0.0.1:18731/tickets)
 test "$code" = 201
 id=$(jq -r .id reports/created.json)
-curl -fsS "http://127.0.0.1:18731/tickets/$id" | jq -e '.title == "CI сохраняет заявку" and .status == "open"'
+curl -fsS "http://127.0.0.1:18731/tickets/$id" | jq -e '.title == "Намеренно неверное ожидание" and .status == "open"'
 code=$(curl -sS -o reports/retry.json -w '%{http_code}' -H 'Content-Type: application/json' -H 'Idempotency-Key: ci-one' -d '{"title":"CI сохраняет заявку"}' http://127.0.0.1:18731/tickets)
 test "$code" = 200
 jq -e --arg id "$id" '.id == $id' reports/retry.json
