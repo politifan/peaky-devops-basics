@@ -1,0 +1,36 @@
+name: Full course lab acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  course-route:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Download original compatible kit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$HOME/course-acceptance-kit" downloads
+          gh release download course-v4 -R politifan/peaky-devops-basics -p peaky-devops-301758-3.0.0-linux-amd64.tar.gz -p SHA256SUMS -D downloads
+          cd downloads
+          grep 'peaky-devops-301758-3.0.0-linux-amd64.tar.gz$' SHA256SUMS | sha256sum -c -
+          tar -xzf peaky-devops-301758-3.0.0-linux-amd64.tar.gz -C "$HOME/course-acceptance-kit"
+      - name: Positive and negative lab route
+        run: |
+          git config --global user.name 'Course verification'
+          git config --global user.email 'course-verification@example.invalid'
+          bash qa/route-acceptance.sh "ci-$GITHUB_RUN_ID" "$HOME/course-acceptance-kit" > course-route.log 2>&1
+      - name: Report failure location
+        if: failure()
+        run: tail -n 100 course-route.log || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: full-course-route-evidence
+          path: |
+            course-route.log
+            ~/peaky-labs/ci-*/**/results.tsv
+          retention-days: 30
