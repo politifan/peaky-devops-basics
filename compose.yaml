@@ -1,0 +1,35 @@
+name: peaky-training
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: student
+      POSTGRES_PASSWORD: training-only-change-for-real-use
+      POSTGRES_DB: ticketlab
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U student -d ticketlab"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  migrate:
+    image: ${TICKETLAB_IMAGE:-ticketlab:check}
+    command: ["migrate", "--apply"]
+    environment:
+      TICKETLAB_DATABASE_URL: postgres://student:training-only-change-for-real-use@db:5432/ticketlab?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+  api:
+    image: ${TICKETLAB_IMAGE:-ticketlab:check}
+    command: ["serve", "--listen", "0.0.0.0:8080", "--storage", "postgresql", "--instance", "compose-training"]
+    environment:
+      TICKETLAB_DATABASE_URL: postgres://student:training-only-change-for-real-use@db:5432/ticketlab?sslmode=disable
+    ports:
+      - "127.0.0.1:${TICKETLAB_PORT:-18080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+volumes:
+  pgdata:

@@ -1,0 +1,15 @@
+{
+ "m01-files":{"version":"1.0","kind":"files","mandatory":["fixture.seed","file.copy","log.selection","file.original","log.original"]},
+ "m02-linux":{"version":"1.0","kind":"linux","mandatory":["file.permissions","process.identity","process.peer"]},
+ "m03-http":{"version":"1.0","kind":"http","mandatory":["target","version","health","ready","ticket.create","ticket.read","ticket.invalid","ticket.not_found"]},
+ "m04-terminal":{"version":"1.0","kind":"terminal","mandatory":["stdout.content","stderr.content","pipeline.exit","log.unique"]},
+ "m05-git":{"version":"1.0","kind":"git","mandatory":["git.tree","git.draft","git.config"]},
+ "m06-service":{"version":"1.0","kind":"http","mandatory":["target","version","health","ready","ticket.create","ticket.read","ticket.invalid","ticket.not_found","old_data"]},
+ "m07-persistence":{"version":"1.0","kind":"http","mandatory":["target","version","health","ready","ticket.create","ticket.read","old_data","container.recreate","container.image","container.volume"]},
+ "m08-compose":{"version":"1.0","kind":"http","mandatory":["target","version","health","ready","ticket.create","ticket.read","old_data","postgres.identity","postgres.schema","container.volume"]},
+ "m09-ci":{"version":"1.0","kind":"http","mandatory":["target","version","ticket.create","ticket.read","ci.mandatory_failure","ci.artifact"]},
+ "m10-release":{"version":"1.0","kind":"http","mandatory":["target","version","ready","ticket.create","ticket.read","old_data","container.image"]},
+ "m10-restore":{"version":"1.0","kind":"http","mandatory":["target","version","ready","old_data","restore.identity","restore.snapshot","restore.source_preserved"]},
+ "m11-project":{"version":"1.0","kind":"http","mandatory":["target","version","ready","ticket.create","ticket.read","old_data","project.clean_room","restore.snapshot","ci.artifact","ci.mandatory_failure"]},
+ "m12-retry":{"version":"1.0","kind":"http","mandatory":["target","version","health","ready","ticket.create","ticket.read","ticket.retry","ticket.conflict","old_data","container.recreate"]}
+}

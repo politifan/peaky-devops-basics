@@ -1,0 +1,66 @@
+name: TicketLab — build, check, publish
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: runtime/go.mod
+          cache-dependency-path: runtime/go.sum
+      - name: Runtime tests
+        working-directory: runtime
+        run: go test ./...
+      - name: Build fixed artifacts
+        run: |
+          mkdir -p dist reports
+          cd runtime
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-good" -o ../dist/ticketlab .
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-write -X main.defect=bad-write" -o ../dist/ticketlab-bad-write .
+          cp ../dist/ticketlab ../dist/labcheck
+          cp ../dist/ticketlab ../dist/labctl
+          cd ..
+          cp dist/ticketlab ticketlab
+      - name: Positive and negative HTTP scenarios
+        run: bash scripts/check-runtime.sh
+      - name: Build and inspect container
+        run: |
+          docker build --label org.opencontainers.image.revision="$GITHUB_SHA" -t ticketlab:check .
+          bash scripts/check-container.sh
+      - name: Prepare download
+        run: |
+          cp README.md Dockerfile compose.yaml dist/
+          cp -r practice dist/
+          tar -czf ticketlab-linux-amd64.tar.gz -C dist .
+          sha256sum ticketlab-linux-amd64.tar.gz > SHA256SUMS
+      - name: Publish verified image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}/ticketlab:sha-$GITHUB_SHA"
+          docker tag ticketlab:check "$IMAGE"
+          docker push "$IMAGE" | tee reports/push.txt
+          docker image inspect "$IMAGE" --format '{{json .RepoDigests}}' > reports/digests.json
+          docker logout ghcr.io
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: course-kit-and-evidence
+          path: |
+            ticketlab-linux-amd64.tar.gz
+            SHA256SUMS
+            reports/
+          retention-days: 14

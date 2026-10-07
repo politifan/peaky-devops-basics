@@ -1,0 +1,6 @@
+ticketlab
+labcheck
+labctl
+dist/
+reports/
+.env
