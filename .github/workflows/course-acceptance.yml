@@ -20,6 +20,7 @@ jobs:
           tar -xzf peaky-devops-301758-3.0.0-linux-amd64.tar.gz -C "$HOME/course-acceptance-kit"
       - name: Positive and negative lab route
         run: |
+          docker pull postgres@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54
           git config --global user.name 'Course verification'
           git config --global user.email 'course-verification@example.invalid'
           bash qa/route-acceptance.sh "ci-$GITHUB_RUN_ID" "$HOME/course-acceptance-kit" > course-route.log 2>&1
