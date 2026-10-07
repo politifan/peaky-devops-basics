@@ -42,6 +42,8 @@ jobs:
         run: |
           docker build --label org.opencontainers.image.revision="$GITHUB_SHA" -t ticketlab:check .
           bash scripts/check-container.sh
+      - name: Backup and restore real PostgreSQL
+        run: bash scripts/check-postgres.sh
       - name: Prepare download
         run: |
           cp README.md Dockerfile compose.yaml dist/
