@@ -233,8 +233,8 @@ curl -fsS -H 'Content-Type: application/json' -d '{"title":"Created strictly aft
 case_run m10-restore 0 labctl restore --instance restore-a-v4a --root "$root"
 case_run m10-restore-ready 0 wait_ready http://127.0.0.1:21110
 check m10-same-db-fails 1 m10-restore restore-a-v4a --base-url http://127.0.0.1:21010 --postgres-container "$pg" --database ticketlab --restore-database ticketlab --state "$base"
-check m10-correct 0 m10-restore restore-a-v4a --base-url http://127.0.0.1:21110 --postgres-container "$pg" --database ticketlab --restore-database restored_restore_a_r5 --state "$base"
-check m10-repeat 0 m10-restore restore-a-v4a --base-url http://127.0.0.1:21110 --postgres-container "$pg" --database ticketlab --restore-database restored_restore_a_r5 --state "$base"
+check m10-correct 0 m10-restore restore-a-v4a --base-url http://127.0.0.1:21110 --postgres-container "$pg" --database ticketlab --restore-database restored_restore_a_v4a --state "$base"
+check m10-repeat 0 m10-restore restore-a-v4a --base-url http://127.0.0.1:21110 --postgres-container "$pg" --database ticketlab --restore-database restored_restore_a_v4a --state "$base"
 check m10-release 0 m10-release restore-a-v4a --base-url http://127.0.0.1:21010 --container peaky301758-restore-a-v4a-api-1 --expected-image "$(image_id restore-a-v4a)" --state "$base"
 case_run m10-stop 0 labctl stop --instance restore-a-v4a --root "$root"
 case_run m10-restore-stop 0 docker stop peaky301758-restore-a-v4a-restore
@@ -294,7 +294,7 @@ check() {
   --instance project-a-v4a --workspace "$root/project-a-v4a" --base-url http://127.0.0.1:21011 \
   --postgres-container peaky301758-project-a-v4a-db-1 --database ticketlab \
   --peer-instance project-b-v4a --peer-postgres-container peaky301758-project-b-v4a-db-1 \
-  --peer-database restored_project_b_r5 --peer-base-url http://127.0.0.1:21211 \
+  --peer-database restored_project_b_v4a --peer-base-url http://127.0.0.1:21211 \
   --expected-source "$(jq -r '.source_revision' "$root/project-a-v4a/state/release.json")" \
   --state "$root/project-a-v4a/state/before-handover.json" --report "$root/$name.json" "$@"
 }
