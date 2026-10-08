@@ -21,6 +21,8 @@ jobs:
           cache-dependency-path: runtime/go.sum
       - name: Verify command examples
         run: bash practice/verify-command-examples.sh | tee command-examples.txt
+      - name: Verify v5 practical states
+        run: bash scripts/verify-v5-practice.sh | tee v5-practical-states.txt
       - name: Runtime tests
         working-directory: runtime
         run: go test ./...
@@ -38,10 +40,18 @@ jobs:
           cp dist/ticketlab ticketlab
       - name: Positive and negative HTTP scenarios
         run: bash scripts/check-runtime.sh
+      - name: Verify learner HTTP checker
+        run: bash scripts/verify-v5-http.sh | tee reports/v5-http-checks.txt
       - name: Build and inspect container
         run: |
           docker build --label org.opencontainers.image.revision="$GITHUB_SHA" -t ticketlab:check .
           bash scripts/check-container.sh
+          docker tag ticketlab:check ticketlab:v5-selected
+          IMAGE_REF=ticketlab:v5-selected bash scripts/check-container.sh
+          if IMAGE_REF=ticketlab:v5-absent bash scripts/check-container.sh; then
+            echo 'FAIL: absent image was accepted'; exit 1
+          fi
+          IMAGE_REF=ticketlab:v5-selected bash scripts/check-container.sh
       - name: Backup and restore real PostgreSQL
         run: bash scripts/check-postgres.sh
       - name: Prepare download
@@ -71,6 +81,7 @@ jobs:
             ticketlab-linux-amd64.tar.gz
             ticketlab-image.tar.gz
             command-examples.txt
+            v5-practical-states.txt
             SHA256SUMS
             reports/
           retention-days: 14
