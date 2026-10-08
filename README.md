@@ -20,7 +20,7 @@ Run привязан к Git SHA, образ — к registry digest. Отдель
 
 ## Дополнительный тренажёр редакции 5
 
-В релизе `course-v5` скачайте `practice-v5.tar.gz` и `SHA256SUMS-practice-v5`.
+В релизе `course-v5-final` скачайте `practice-v5.tar.gz` и `SHA256SUMS-practice-v5`.
 Проверьте `sha256sum -c SHA256SUMS-practice-v5`, создайте отдельный каталог
 `mkdir -p "$HOME/peaky-v5"` и распакуйте `tar -xzf practice-v5.tar.gz -C "$HOME/peaky-v5"`.
 Это дополнение к сервисному комплекту peaky-kit, а не его замена.

@@ -6,6 +6,7 @@ root=$(mktemp -d)
 trap 'rm -f "$root/ready.json" "$root/create.json" "$root/read.json" "$root/invalid.json"; rmdir "$root"' EXIT
 title="v5-check-$RANDOM-$$"
 curl -fsS --max-time 5 "$base/ready" > "$root/ready.json"
+jq -e '.status == "ready"' "$root/ready.json"
 code=$(curl -sS --max-time 5 -o "$root/create.json" -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"title\":\"$title\"}" "$base/tickets")
 test "$code" = 201
 id=$(jq -er '.id' "$root/create.json")
