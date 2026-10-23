@@ -139,6 +139,17 @@ func (c *Checker) httpChecks(p Profile, state string) {
 	status, e := c.json("GET", "/version", nil, "", &v)
 	c.add("target", e == nil && status == 200 && v["instance_id"] == c.instance, "назначенный instance "+c.instance, map[string]any{"status": status, "instance": v["instance_id"], "error": errorText(e)}, "Сверьте адрес и instance в запуске приложения")
 	c.add("version", e == nil && status == 200 && v["release_version"] == c.expectedRelease && v["source_revision"] == c.expectedSource && v["api_contract"] == "1.0", map[string]string{"release": c.expectedRelease, "source": c.expectedSource, "api": "1.0"}, v, "Сверьте поставку с manifest, а не с текущим /version")
+	// A known loopback address is not proof of service ownership. Never send
+	// subsequent requests (especially POST) when instance/version is unknown.
+	if e != nil || status != 200 || v["instance_id"] != c.instance ||
+		v["release_version"] != c.expectedRelease || v["source_revision"] != c.expectedSource || v["api_contract"] != "1.0" {
+		for _, id := range p.Mandatory {
+			if id != "target" && id != "version" {
+				c.r.Checks = append(c.r.Checks, Check{id, "not_checked", "confirmed target and version", "blocked before further HTTP requests", "Correct the assigned endpoint and release first"})
+			}
+		}
+		return
+	}
 	for _, endpoint := range []struct{ id, path, want string }{{"health", "/health", "alive"}, {"ready", "/ready", "ready"}} {
 		if has(p, endpoint.id) {
 			var b map[string]string

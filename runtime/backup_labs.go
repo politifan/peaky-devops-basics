@@ -8,13 +8,16 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
 func backupControl(command, p string, m Instance) int {
+	if err := guardLocalDocker(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 64
+	}
 	if m.ModuleID != "m10" && m.ModuleID != "m11" {
 		fmt.Fprintln(os.Stderr, "backup/restore доступны в модулях 10 и 11")
 		return 64
@@ -48,7 +51,7 @@ func backupControl(command, p string, m Instance) int {
 			fmt.Fprintln(os.Stderr, e)
 			return 2
 		}
-		cmd := exec.CommandContext(ctx, "docker", "exec", pg, "pg_dump", "-U", "student", "-d", "ticketlab", "-Fc")
+		cmd := pinnedDockerCommand(ctx, "exec", pg, "pg_dump", "-U", "student", "-d", "ticketlab", "-Fc")
 		cmd.Stdout = dump
 		cmd.Stderr = os.Stderr
 		if e = cmd.Run(); e != nil {
@@ -105,14 +108,14 @@ func backupControl(command, p string, m Instance) int {
 	}
 	defer dump.Close()
 	// A new database is required. createdb fails if the destination already exists.
-	cmd := exec.CommandContext(ctx, "docker", "exec", pg, "createdb", "-U", "postgres", "-O", "student", restoredDB)
+	cmd := pinnedDockerCommand(ctx, "exec", pg, "createdb", "-U", "postgres", "-O", "student", restoredDB)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if e = cmd.Run(); e != nil {
 		fmt.Fprintln(os.Stderr, "новая БД не создана; существующая не перезаписывается")
 		return 2
 	}
-	cmd = exec.CommandContext(ctx, "docker", "exec", "-i", pg, "pg_restore", "-U", "student", "-d", restoredDB, "--no-owner", "--exit-on-error")
+	cmd = pinnedDockerCommand(ctx, "exec", "-i", pg, "pg_restore", "-U", "student", "-d", restoredDB, "--no-owner", "--exit-on-error")
 	cmd.Stdin = dump
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -143,7 +146,7 @@ func backupControl(command, p string, m Instance) int {
 	name := "peaky301758-" + m.InstanceID + "-restore"
 	image := "peaky301758-" + m.InstanceID + ":3.0.0"
 	args := []string{"run", "-d", "--name", name, "--label", "io.peaky.course=301758", "--label", "io.peaky.instance=" + m.InstanceID, "--memory", "96m", "--cpus", "0.25", "--pids-limit", "64", "--user", "10001", "--network", "peaky301758-" + m.InstanceID + "_default", "--env-file", restoreEnv, "-p", fmt.Sprintf("127.0.0.1:%d:18000", m.Port+100), image, "serve", "--listen", "0.0.0.0:18000", "--data-dir", "/data", "--instance", m.InstanceID, "--storage", "postgresql"}
-	cmd = exec.CommandContext(ctx, "docker", args...)
+	cmd = pinnedDockerCommand(ctx, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if e = cmd.Run(); e != nil {

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/docker-safety.sh"
 name="peaky-ci-${GITHUB_RUN_ID:-local}"
 volume="$name-data"
 cleanup() {
@@ -28,3 +29,4 @@ run
 curl -fsS "http://127.0.0.1:18733/tickets/$id" | jq -e '.title == "Заявка переживает recreate"'
 docker logs "$name" > reports/container.log 2>&1
 printf '%s\n' 'PASS: actual image and persistence after recreate' | tee reports/container-result.txt
+

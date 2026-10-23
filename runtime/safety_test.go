@@ -43,7 +43,7 @@ func TestConstantValidIDRejected(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/version":
-			json.NewEncoder(w).Encode(map[string]string{"instance_id": "test", "release_version": releaseVersion, "source_revision": sourceRevision})
+			json.NewEncoder(w).Encode(map[string]string{"instance_id": "test", "release_version": releaseVersion, "source_revision": sourceRevision, "api_contract": "1.0"})
 		case "/health", "/ready":
 			fmt.Fprint(w, `{"status":"ok"}`)
 		case "/tickets":

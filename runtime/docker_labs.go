@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -68,10 +67,13 @@ func prepareDockerLab(p string, m Instance) error {
 }
 
 func composeRun(p string, m Instance, args ...string) error {
+	if err := guardLocalDocker(); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
 	defer cancel()
 	all := append([]string{"compose", "--project-directory", p, "-p", "peaky301758-" + m.InstanceID}, args...)
-	cmd := exec.CommandContext(ctx, "docker", all...)
+	cmd := pinnedDockerCommand(ctx, all...)
 	// Compose output contains no environment dump; secrets remain in protected .env.
 	out, e := cmd.CombinedOutput()
 	fmt.Print(string(out))
@@ -82,11 +84,15 @@ func composeRun(p string, m Instance, args ...string) error {
 }
 
 func dockerControl(command, p string, m Instance) int {
+	if err := guardLocalDocker(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 64
+	}
 	switch command {
 	case "start":
 		imageName := "peaky301758-" + m.InstanceID + ":3.0.0"
 		lookupCtx, lookupCancel := context.WithTimeout(context.Background(), 30*time.Second)
-		lookupError := exec.CommandContext(lookupCtx, "docker", "image", "inspect", imageName).Run()
+		lookupError := pinnedDockerCommand(lookupCtx, "image", "inspect", imageName).Run()
 		lookupCancel()
 		buildFlag := "--no-build"
 		if lookupError != nil {
@@ -98,7 +104,7 @@ func dockerControl(command, p string, m Instance) int {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cancel()
-		out, e := exec.CommandContext(ctx, "docker", "image", "inspect", "peaky301758-"+m.InstanceID+":3.0.0", "--format", "{{.Id}}").Output()
+		out, e := pinnedDockerCommand(ctx, "image", "inspect", "peaky301758-"+m.InstanceID+":3.0.0", "--format", "{{.Id}}").Output()
 		if e != nil {
 			fmt.Fprintln(os.Stderr, "Compose запущен, но image ID не прочитан:", e)
 			return 2
@@ -124,7 +130,7 @@ func dockerControl(command, p string, m Instance) int {
 		if e != nil || json.Unmarshal(data, &retained) != nil || retained["image_id"] == "" {
 			return 2
 		}
-		if e = exec.CommandContext(ctx, "docker", "image", "tag", retained["image_id"], "peaky301758-"+m.InstanceID+":known-good").Run(); e != nil {
+		if e = pinnedDockerCommand(ctx, "image", "tag", retained["image_id"], "peaky301758-"+m.InstanceID+":known-good").Run(); e != nil {
 			fmt.Fprintln(os.Stderr, "исходный образ потерян; остановите свой стенд и восстановите его из резервной копии")
 			return 2
 		}
@@ -144,12 +150,15 @@ func dockerControl(command, p string, m Instance) int {
 }
 
 func dockerReset(p string, m Instance) error {
+	if err := guardLocalDocker(); err != nil {
+		return err
+	}
 	// Labels are checked before removing any runtime. Never use a global prune or -v.
 	extra := []string{}
 	for _, suffix := range []string{"api-1", "db-1", "restore"} {
 		name := "peaky301758-" + m.InstanceID + "-" + suffix
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-		out, e := exec.CommandContext(ctx, "docker", "ps", "-a", "--filter", "name=^/"+name+"$", "--format", "{{.Names}}").Output()
+		out, e := pinnedDockerCommand(ctx, "ps", "-a", "--filter", "name=^/"+name+"$", "--format", "{{.Names}}").Output()
 		cancel()
 		if e != nil {
 			return fmt.Errorf("невозможно подтвердить scope Docker reset")
@@ -170,7 +179,7 @@ func dockerReset(p string, m Instance) error {
 	}
 	for _, name := range extra {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		e := exec.CommandContext(ctx, "docker", "rm", name).Run()
+		e := pinnedDockerCommand(ctx, "rm", name).Run()
 		cancel()
 		if e != nil {
 			return fmt.Errorf("собственный остановленный restore контейнер не удалён")

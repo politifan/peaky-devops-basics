@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/docker-safety.sh"
 export COMPOSE_PROJECT_NAME="peaky-restore-${GITHUB_RUN_ID:-local}"
 export TICKETLAB_PORT=18983
 mkdir -p reports
@@ -37,3 +38,4 @@ fi
 curl -fsS "http://127.0.0.1:$TICKETLAB_PORT/tickets/$ticket_id" | jq -e '.title == "Данные до резервной копии"'
 printf 'PASS custom-format backup\nPASS restore into separate database\nPASS restored application reads original ID and title\nPASS corrupt archive rejected\nPASS original application still reads original data\n' > reports/postgres-restore.txt
 cat reports/postgres-restore.txt
+

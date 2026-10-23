@@ -1,4 +1,4 @@
-name: Full course lab acceptance
+name: Patched source full lab acceptance
 on:
   push:
     branches: [codex/devops-quality-20261023]
@@ -19,15 +19,24 @@ jobs:
           done
           test "$(docker context show)" = default
           docker info --format '{{.Name}}'
-      - name: Download original compatible kit
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: runtime/go.mod
+          cache-dependency-path: runtime/go.sum
+      - name: Build the patched learner kit from this commit
         run: |
-          mkdir -p "$HOME/course-acceptance-kit" downloads
-          gh release download course-v4 -R politifan/peaky-devops-basics -p peaky-devops-301758-3.0.0-linux-amd64.tar.gz -p SHA256SUMS -D downloads
-          cd downloads
-          grep 'peaky-devops-301758-3.0.0-linux-amd64.tar.gz$' SHA256SUMS | sha256sum -c -
-          tar -xzf peaky-devops-301758-3.0.0-linux-amd64.tar.gz -C "$HOME/course-acceptance-kit"
+          mkdir -p "$HOME/course-acceptance-kit"
+          cd runtime
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-good" -o "$HOME/course-acceptance-kit/ticketlab" .
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-write -X main.defect=bad-write" -o "$HOME/course-acceptance-kit/ticketlab-bad-write" .
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-body -X main.defect=bad-body" -o "$HOME/course-acceptance-kit/ticketlab-bad-body" .
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-bad-retry -X main.defect=bad-retry" -o "$HOME/course-acceptance-kit/ticketlab-bad-retry" .
+          cd ..
+          cp "$HOME/course-acceptance-kit/ticketlab" "$HOME/course-acceptance-kit/labcheck"
+          cp "$HOME/course-acceptance-kit/ticketlab" "$HOME/course-acceptance-kit/labctl"
+          cp README.md Dockerfile compose.yaml "$HOME/course-acceptance-kit/"
+          cp -r practice "$HOME/course-acceptance-kit/"
+          (cd "$HOME/course-acceptance-kit" && sha256sum ticketlab ticketlab-bad-* labcheck labctl > SHA256SUMS)
       - name: Positive and negative lab route
         run: |
           docker pull postgres@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54

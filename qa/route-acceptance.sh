@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/docker-safety.sh"
 full_run=${1:?unique full run ID}
 full_kit=${2:?installed student archive directory}
 mkdir -m700 -p "$HOME/peaky-labs/$full_run"
@@ -335,3 +336,4 @@ printf '\nROUTE_COMPLETE %s\n' "$root"
 cat "$result"
 
 printf "FULL_ROUTE_COMPLETE %s\n" "$HOME/peaky-labs/$full_run"
+

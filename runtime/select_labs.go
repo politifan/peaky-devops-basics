@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 )
@@ -39,11 +38,15 @@ func selectControl(p string, m Instance, release string) int {
 		return 0
 	}
 	name := "peaky301758-" + m.InstanceID + "-api-1"
+	if err := guardLocalDocker(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 64
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 	// A present container must be ours, even when stopped. Inspection errors
 	// must never authorize mutation of a foreign or inaccessible container.
-	listed, listErr := exec.CommandContext(ctx, "docker", "container", "ls", "-a", "--filter", "name=^/"+name+"$", "--format", "{{.Names}}").Output()
+	listed, listErr := pinnedDockerCommand(ctx, "container", "ls", "-a", "--filter", "name=^/"+name+"$", "--format", "{{.Names}}").Output()
 	if listErr != nil {
 		fmt.Fprintln(os.Stderr, "не удалось проверить владельца контейнера")
 		return 2
@@ -67,7 +70,7 @@ func selectControl(p string, m Instance, release string) int {
 			fmt.Fprintln(os.Stderr, "неверная запись исходного образа")
 			return 2
 		}
-		if e = exec.CommandContext(ctx, "docker", "image", "tag", retained["image_id"], "peaky301758-"+m.InstanceID+":known-good").Run(); e != nil {
+		if e = pinnedDockerCommand(ctx, "image", "tag", retained["image_id"], "peaky301758-"+m.InstanceID+":known-good").Run(); e != nil {
 			fmt.Fprintln(os.Stderr, "исходный проверенный образ недоступен; смена поставки отменена")
 			return 2
 		}
@@ -86,7 +89,7 @@ func selectControl(p string, m Instance, release string) int {
 		data, e := os.ReadFile(filepath.Join(p, "state/known-image.json"))
 		var known map[string]string
 		if e == nil && json.Unmarshal(data, &known) == nil && known["image_id"] != "" {
-			cmd := exec.CommandContext(ctx, "docker", "image", "tag", known["image_id"], "peaky301758-"+m.InstanceID+":3.0.0")
+			cmd := pinnedDockerCommand(ctx, "image", "tag", known["image_id"], "peaky301758-"+m.InstanceID+":3.0.0")
 			if e = cmd.Run(); e != nil {
 				fmt.Fprintln(os.Stderr, "исходный проверенный образ недоступен; новый не подставляется вместо него")
 				return 2
