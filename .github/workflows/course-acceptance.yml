@@ -1,5 +1,7 @@
 name: Full course lab acceptance
 on:
+  push:
+    branches: [codex/devops-quality-20261023]
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,6 +11,14 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Require disposable local runner boundaries
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          for name in DOCKER_HOST DOCKER_CONTEXT COMPOSE_FILE TICKETLAB_IMAGE PEAKY_AUTHOR_PROBE_SSH; do
+            test -z "${!name:-}" || { echo "Unexpected external configuration: $name"; exit 1; }
+          done
+          test "$(docker context show)" = default
+          docker info --format '{{.Name}}'
       - name: Download original compatible kit
         env:
           GH_TOKEN: ${{ github.token }}
