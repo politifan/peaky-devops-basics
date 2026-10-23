@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -238,6 +239,16 @@ func errorText(e error) string {
 	}
 	return e.Error()
 }
+
+// Supported provenance: Git SHA-1 commit IDs and the original kit's SHA-256 source hash.
+func validSourceRevision(value string) bool {
+	if len(value) != 40 && len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
 func loadBaseline(path, instance string) (Baseline, error) {
 	var b Baseline
 	data, e := os.ReadFile(path)
@@ -251,7 +262,7 @@ func loadBaseline(path, instance string) (Baseline, error) {
 	_ = json.Unmarshal(profileBytes, &profiles)
 	profile, exists := profiles[b.Profile]
 	_, dateErr := time.Parse(time.RFC3339Nano, b.Created)
-	if !exists || b.ProfileVersion != profile.Version || b.Seed < 1 || b.Seed > 999999 || len(b.SourceRevision) != 64 || dateErr != nil {
+	if !exists || b.ProfileVersion != profile.Version || b.Seed < 1 || b.Seed > 999999 || !validSourceRevision(b.SourceRevision) || dateErr != nil {
 		return b, fmt.Errorf("baseline: metadata profile/version/seed/source/date повреждены")
 	}
 	return b, nil
@@ -391,6 +402,10 @@ func checkMain(args []string) int {
 	if f.Parse(args[2:]) != nil || *instance == "" {
 		return 64
 	}
+	if args[0] == "baseline" && !validSourceRevision(*source) {
+		fmt.Fprintln(os.Stderr, "baseline requires a 40- or 64-character hexadecimal source revision")
+		return 64
+	}
 	if *base != "" {
 		if !safeBaseURL(*base) {
 			fmt.Fprintln(os.Stderr, "target должен быть назначенным loopback HTTP URL без redirect/auth/path")
@@ -424,7 +439,7 @@ func checkMain(args []string) int {
 		}
 		var version map[string]string
 		vs, ve := c.json("GET", "/version", nil, "", &version)
-		if ve != nil || vs != 200 || version["instance_id"] != *instance || version["source_revision"] != *source || version["release_version"] != *rel {
+		if ve != nil || vs != 200 || version["instance_id"] != *instance || version["source_revision"] != *source || version["release_version"] != *rel || version["api_contract"] != "1.0" {
 			fmt.Fprintln(os.Stderr, "baseline не создан: instance и известная версия до операции не подтверждены")
 			return 1
 		}
