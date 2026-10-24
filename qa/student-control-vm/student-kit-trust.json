@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "scope": "LOCAL REVIEW CANDIDATE ONLY; not a published student pointer",
+  "kits": [
+    {
+      "id": "basic-quality-5e602022",
+      "source_commit": "5e60202210d5bf69470132e92c977dfefa2f68e0",
+      "artifact_id": 12555391504,
+      "artifact_sha256": "4685be2e3c5340ba6f0b3815573755d7509262a237a71e480ba688dbaf88233c",
+      "kit_archive_sha256": "641c1262fb3724a8b6be64a2da6823243c3b98c0f60ef9ae3159595bd3ad07cc",
+      "verified_source_run": 40081074305,
+      "verified_route_run": 40081074314,
+      "files": {
+        "ticketlab": "8f31ab052b38dcc1fd5be14ab172cdb6dcd32913d80516d71c7fa3b934fb8d7a",
+        "ticketlab-bad-body": "3e8b92b53ae04c0be7c62579b859c40223b4a6d556f22e387e30513b12189f6e",
+        "ticketlab-bad-write": "7af7ec40e3736fded5a3f03437d45d0aa9ae7de0022d20f0587f082785ac842d",
+        "ticketlab-bad-retry": "86363fdae49942af02e98f4b14bcd020ac1f9ba819230d28986518d411b6d008",
+        "labctl": "8f31ab052b38dcc1fd5be14ab172cdb6dcd32913d80516d71c7fa3b934fb8d7a",
+        "labcheck": "8f31ab052b38dcc1fd5be14ab172cdb6dcd32913d80516d71c7fa3b934fb8d7a"
+      }
+    }
+  ],
+  "engine_files": {
+    "engine/control_provision.py": "5697fa7b0c0f3f9688e55d314d77149c9d6176454618db6d44c4874eeef53557",
+    "engine/control-matrix.json": "e34e8783e0dc349b3446c1e5886e5d0fbea100ec9f690eb0e1f06b692359e547"
+  }
+}

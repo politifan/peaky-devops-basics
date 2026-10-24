@@ -1,0 +1,81 @@
+# LOCAL candidate only. Requires independent peer and ROOTAPPROVAL before push.
+name: Isolated student VM control scope
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/devops-quality-20261023]
+    paths:
+      - qa/student-control-vm/**
+      - .github/workflows/student-control-vm.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  student-vm:
+    if: github.ref == 'refs/heads/codex/devops-quality-20261023'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        control: [1,2,3,4,5,6,7,8,10,11,12]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Mock and filesystem guards only
+        run: python3 -m unittest discover -s qa/student-control-vm -p 'test_*.py' -v
+      - name: Download exact tested software artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/politifan/peaky-devops-basics/actions/artifacts/12555391504/zip > "$RUNNER_TEMP/reviewed-kit.zip"
+          printf '%s  %s\n' '4685be2e3c5340ba6f0b3815573755d7509262a237a71e480ba688dbaf88233c' "$RUNNER_TEMP/reviewed-kit.zip" | sha256sum -c -
+          python3 qa/student-control-vm/install_tested_kit.py "$RUNNER_TEMP/reviewed-kit.zip" "$RUNNER_TEMP/reviewed-kit"
+      - name: Exercise actual non-root VM gates, without bypass
+        env:
+          CONTROL: ${{ matrix.control }}
+        run: |
+          id=$(printf 'control%02d-ci-%s' "$CONTROL" "$GITHUB_RUN_ID")
+          root="$HOME/course-control-labs/$id"
+          python3 qa/student-control-vm/student_control.py prepare "$CONTROL" --root "$root" --kit "$RUNNER_TEMP/reviewed-kit" --execute --isolated-vm-ack I_OWN_THIS_ISOLATED_UBUNTU_VM
+          python3 - "$root" "$RUNNER_TEMP/student-vm-summary.json" <<'PY'
+          import hashlib,json,pathlib,sys
+          root=pathlib.Path(sys.argv[1]); marker=json.loads((root/'student-provision.json').read_text())
+          assert marker['scope']=='initial assessment setup, not completion'
+          assert marker['prepared_sha256']==hashlib.sha256((root/'prepared.json').read_bytes()).hexdigest()
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({'control':marker['control'],'kit_id':marker['kit_id'],'source_commit':marker['source_commit'],'prepared_sha256':marker['prepared_sha256'],'scope':'student VM initial setup only','passed':True}))
+          PY
+      - name: Self-paced m10 backup continuation through actual VM gates
+        if: matrix.control == 10
+        run: |
+          root="$HOME/course-control-labs/control10-ci-$GITHUB_RUN_ID"
+          "$RUNNER_TEMP/reviewed-kit/labctl" backup --instance control10-a --root "$root"
+          python3 qa/student-control-vm/student_control.py after-backup 10 --root "$root" --kit "$RUNNER_TEMP/reviewed-kit" --execute --isolated-vm-ack I_OWN_THIS_ISOLATED_UBUNTU_VM
+          python3 - "$root" "$RUNNER_TEMP/student-vm-summary.json" <<'PY'
+          import datetime,hashlib,json,pathlib,sys,urllib.request
+          root=pathlib.Path(sys.argv[1]); state=root/'control10-a/state'
+          before=json.loads((state/'author-before.json').read_text()); backup=json.loads((state/'backup.json').read_text()); late=json.loads((root/'after-backup.json').read_text())
+          times=[datetime.datetime.fromisoformat(x.replace('Z','+00:00')) for x in (before['created_utc'],backup['created_utc'],late['post_attempt_started_utc'],late['confirmed_utc'])]
+          assert times==sorted(times)
+          assert backup['dump_sha256']==hashlib.sha256((state/'backup.dump').read_bytes()).hexdigest()==late['backup_sha256']
+          assert late['baseline_sha256']==hashlib.sha256((state/'author-before.json').read_bytes()).hexdigest()
+          for rows in (before['tickets'],before['postgres_snapshot']['rows'],backup['snapshot']['rows']):
+              assert all(str(row['id'])!=str(late['id']) and row['title']!=late['title'] for row in rows)
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs): return None
+          opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
+          def get(identifier):
+              with opener.open('http://127.0.0.1:18010/tickets/'+str(identifier),timeout=5) as response:return json.load(response)
+          assert get(late['id'])['title']==late['title']
+          assert all(get(old['id'])==old for old in before['tickets'])
+          target=pathlib.Path(sys.argv[2]); summary=json.loads(target.read_text());summary.update({'self_paced_m10_continuation_passed':True,'backup_sha256':late['backup_sha256'],'confirmed_utc':late['confirmed_utc'],'restore_executed':False});target.write_text(json.dumps(summary))
+          PY
+      - name: Keep metadata summary only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: student-vm-${{ matrix.control }}-metadata
+          path: ${{ runner.temp }}/student-vm-summary.json
+          if-no-files-found: warn
+          retention-days: 7
