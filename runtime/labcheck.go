@@ -308,10 +308,37 @@ func (c *Checker) files(p Profile, workspace string) {
 		c.add("git.tree", e == nil && string(out) == "README.txt\n", "HEAD содержит только README.txt", string(out), "Посмотрите индекс перед commit, не добавляйте черновик")
 		out, e = probeCommand(ctx, "/usr/bin/git", "-C", filepath.Join(workspace, "repo"), "show", "HEAD:README.txt").Output()
 		c.add("git.config", e == nil && string(out) == "TicketLab\nport=18005\n", "README.txt содержит TicketLab и port=18005", string(out), "Создание ветки само по себе не меняет конфигурацию")
-		out, e = probeCommand(ctx, "/usr/bin/git", "-C", filepath.Join(workspace, "repo"), "status", "--porcelain", "--untracked-files=all").Output()
-		c.add("git.draft", e == nil && strings.Contains(string(out), "?? draft.txt"), "draft.txt остаётся untracked", string(out), "Черновик не должен попасть в commit")
+		out, e = probeCommand(ctx, "/usr/bin/git", "-C", filepath.Join(workspace, "repo"), "status", "--porcelain=v1", "-z", "--untracked-files=all").Output()
+		c.add("git.draft", e == nil && porcelainHasUntrackedPath(out, "draft.txt"), "draft.txt остаётся untracked", string(out), "Черновик не должен попасть в commit")
 	}
 }
+
+// Porcelain v1 -z uses raw NUL-delimited paths, including a second path for
+// renames/copies. Never interpret that second path as a new status record.
+func porcelainHasUntrackedPath(output []byte, path string) bool {
+	if len(output) == 0 || output[len(output)-1] != 0 {
+		return false
+	}
+	records := strings.Split(string(output[:len(output)-1]), "\x00")
+	found := false
+	for i := 0; i < len(records); i++ {
+		record := records[i]
+		if len(record) < 4 || record[2] != ' ' {
+			return false
+		}
+		if record[:2] == "??" && record[3:] == path {
+			found = true
+		}
+		if strings.ContainsAny(record[:2], "RC") {
+			i++
+			if i >= len(records) || records[i] == "" {
+				return false
+			}
+		}
+	}
+	return found
+}
+
 func checkMain(args []string) int {
 	if len(args) == 0 || args[0] == "--help" {
 		fmt.Println("labcheck version | doctor --workspace PATH --module N | check PROFILE --instance ID --workspace PATH --base-url URL --report PATH --state BASELINE | baseline PROFILE --instance ID --base-url URL --state PATH")
