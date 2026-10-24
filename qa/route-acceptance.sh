@@ -254,7 +254,7 @@ case_run m12-change-stop 0 labctl stop --instance retry-a-v4a --root "$root"
 case_run m12-bad-retry-release 0 labctl select-release --release bad-retry --instance retry-a-v4a --root "$root"
 case_run m12-bad-retry-start 0 labctl start --instance retry-a-v4a --root "$root"
 case_run m12-bad-retry-ready 0 wait_ready http://127.0.0.1:21012
-check m12-retry-and-conflict-fail 1 m12-retry retry-a-v4a --base-url http://127.0.0.1:21012 --container "$api" --state "$base"
+check m12-retry-and-conflict-fail 1 m12-retry retry-a-v4a --base-url http://127.0.0.1:21012 --container "$api" --state "$base" --expected-release 3.0.0-bad-retry
 case_run m12-fix-stop 0 labctl stop --instance retry-a-v4a --root "$root"
 case_run m12-fix-release 0 labctl select-release --release good --instance retry-a-v4a --root "$root"
 case_run m12-fix-start 0 labctl start --instance retry-a-v4a --root "$root"
