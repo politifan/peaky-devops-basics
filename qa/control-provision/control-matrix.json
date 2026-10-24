@@ -1,0 +1,19 @@
+{
+  "course": 301758,
+  "snapshot": "course-301758-470542a90f37.json",
+  "source": "control lesson step 1, including assessment profile seed (not only initial-state paragraph)",
+  "controls": {
+    "1": {"source_id":11653606,"lesson":2627904,"instance":"control01-a","seed":418,"port":18001,"port_origin":"runtime default; API not started"},
+    "2": {"source_id":11653607,"lesson":2627905,"instance":"control02-a","seed":419,"port":18002,"peer_instance":"control02-b","peer_port":18102},
+    "3": {"source_id":11653608,"lesson":2627906,"instance":"control03-a","seed":420,"port":18003},
+    "4": {"source_id":11653609,"lesson":2627907,"instance":"control04-a","seed":420,"port":18004,"port_origin":"runtime default; API not started"},
+    "5": {"source_id":11653610,"lesson":2627908,"instance":"control05-a","seed":421,"port":18005,"port_origin":"runtime default; API not started; initial Git README port=18004"},
+    "6": {"source_id":11653611,"lesson":2627909,"instance":"control06-a","seed":422,"port":18006},
+    "7": {"source_id":11653612,"lesson":2627910,"instance":"control07-a","seed":423,"port":18007},
+    "8": {"source_id":11653613,"lesson":2627911,"instance":"control08-a","seed":424,"port":18008},
+    "10": {"source_id":11653615,"lesson":2627913,"instance":"control10-a","seed":426,"port":18010,"restored_database":"restored_control10_a","restored_api_port":18110},
+    "11": {"source_id":11653616,"lesson":2627914,"instance":"control11-a","seed":427,"port":18011,"peer_instance":"control11-b","peer_port":18111,"peer_restored_api_port":18211},
+    "12": {"source_id":11653621,"lesson":2627919,"instance":"control12-a","seed":428,"port":18012}
+  },
+  "excluded": {"9":"2627912/11653614 is the real fork/Actions artifact control, not a local control09-a fixture"}
+}

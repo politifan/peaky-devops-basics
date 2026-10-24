@@ -1,0 +1,58 @@
+# Candidate only: copy into the basic quality branch AFTER root review; never auto-publish.
+name: Disposable control setup candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/devops-quality-20261023]
+    paths:
+      - qa/control-provision/**
+      - .github/workflows/disposable-controls.yml
+permissions:
+  contents: read
+jobs:
+  setup:
+    if: github.ref == 'refs/heads/codex/devops-quality-20261023'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        control: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: runtime/go.mod
+          cache-dependency-path: runtime/go.sum
+      - name: Unit setup contracts
+        run: python3 -m unittest discover -s qa/control-provision -v
+      - name: Build exact checkout kit (no release)
+        working-directory: runtime
+        run: |
+          mkdir -p "$RUNNER_TEMP/kit"
+          CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-good" -o "$RUNNER_TEMP/kit/ticketlab" .
+          cp "$RUNNER_TEMP/kit/ticketlab" "$RUNNER_TEMP/kit/labctl"
+          cp "$RUNNER_TEMP/kit/ticketlab" "$RUNNER_TEMP/kit/labcheck"
+          for defect in bad-body bad-write bad-retry; do
+            CGO_ENABLED=0 go build -trimpath -ldflags "-X main.sourceRevision=$GITHUB_SHA -X main.releaseVersion=3.0.0-$defect -X main.defect=$defect" -o "$RUNNER_TEMP/kit/ticketlab-$defect" .
+          done
+      - name: Disposable setup only
+        env:
+          CONTROL: ${{ matrix.control }}
+          CONTROL_DIAGNOSTICS: ${{ runner.temp }}/control-diagnostics.jsonl
+        run: |
+          sha=$(sha256sum "$RUNNER_TEMP/kit/ticketlab" | cut -d ' ' -f1)
+          id=$(printf 'control%02d-a' "$CONTROL")
+          python3 qa/control-provision/control_provision.py "$CONTROL" --root "$RUNNER_TEMP/control-root" --kit "$RUNNER_TEMP/kit" --kit-sha256 "$sha" --execute --confirm-control "$id"
+          python3 qa/control-provision/assert_setup.py "$CONTROL" "$RUNNER_TEMP/control-root" "$RUNNER_TEMP/kit"
+      - name: Retain allowlisted setup diagnostics only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: control-${{ matrix.control }}-setup-diagnostics
+          path: ${{ runner.temp }}/control-diagnostics.jsonl
+          if-no-files-found: warn
+          retention-days: 7
+      # No cleanup/reset, backup, restore, or student solution. VM disposal owns cleanup.
