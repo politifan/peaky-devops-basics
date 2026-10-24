@@ -52,7 +52,7 @@ jobs:
           CONTROL_DIAGNOSTICS: ${{ runner.temp }}/control-barrier-diagnostics.jsonl
           PYTHONPATH: qa/control-provision
         run: |
-          python3 -m unittest discover -s qa/control-backup-barrier -p test_m10_barrier.py -v
+          CONTROL_DIAGNOSTICS= python3 -m unittest discover -s qa/control-backup-barrier -p test_m10_barrier.py -v
           sha=$(sha256sum "$RUNNER_TEMP/kit/ticketlab" | cut -d ' ' -f1)
           python3 qa/control-provision/control_provision.py 10 --root "$RUNNER_TEMP/barrier-root" --kit "$RUNNER_TEMP/kit" --kit-sha256 "$sha" --execute --confirm-control control10-a
           python3 qa/control-provision/assert_setup.py 10 "$RUNNER_TEMP/barrier-root" "$RUNNER_TEMP/kit"
