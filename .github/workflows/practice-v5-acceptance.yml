@@ -1,0 +1,26 @@
+name: Published practice v5 acceptance
+on:
+  push:
+    branches: [codex/devops-quality-20261023]
+    paths:
+      - .github/workflows/practice-v5-acceptance.yml
+      - qa/verify-practice-v5.py
+      - qa/practice-v5-cases.sh
+permissions:
+  contents: read
+jobs:
+  practice:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Verify published bytes and all isolated practice cases
+        run: python3 qa/verify-practice-v5.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: practice-v5-evidence
+          path: reports/practice-v5/
+          if-no-files-found: error
+          retention-days: 30
