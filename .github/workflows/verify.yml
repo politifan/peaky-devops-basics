@@ -1,7 +1,7 @@
-name: Isolated basic source verification
+name: TicketLab build and learner artifact
 on:
   push:
-    branches: [codex/devops-quality-20261023]
+    branches: [main, codex/devops-finalize-20261026]
   workflow_dispatch:
 permissions:
   contents: read

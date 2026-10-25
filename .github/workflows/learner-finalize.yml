@@ -1,0 +1,28 @@
+name: Remaining learner commands
+on:
+  push:
+    branches: [codex/devops-finalize-20261026]
+    paths: [qa/learner-finalize.py, .github/workflows/learner-finalize.yml]
+permissions:
+  contents: read
+jobs:
+  remaining:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - name: Actual interactive editor and user systemd tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y nano less
+          sudo systemctl start user@$(id -u).service
+      - name: Remaining learner operations on the published kit
+        run: python3 qa/learner-finalize.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: remaining-learner-evidence
+          path: reports/learner-finalize.json
+          if-no-files-found: error
+          retention-days: 30
