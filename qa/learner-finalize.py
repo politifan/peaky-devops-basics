@@ -1,5 +1,5 @@
 """Small actual learner routes on a disposable GitHub-hosted Ubuntu VM."""
-import os,sys,pathlib,subprocess,json,hashlib,tarfile,urllib.request,urllib.error,time,socket,pty,select,signal
+import os,sys,pathlib,subprocess,json,hashlib,tarfile,urllib.request,urllib.error,time,socket,pty,select,signal,fcntl,termios,struct
 
 if os.environ.get('RUNNER_ENVIRONMENT')!='github-hosted' or os.environ.get('GITHUB_REF')!='refs/heads/codex/devops-finalize-20261026':
     raise SystemExit('Disposable author CI only')
@@ -74,6 +74,7 @@ if 'CONFLICT' not in merge:raise ValueError('Expected actual merge conflict')
 (b/'EXTRA.txt').write_text('support=email\nstatus=draft\n')
 run(['git','add','README.txt','EXTRA.txt'],cwd=b);run(['git','commit','-m','Resolve by agreed behavior'],cwd=b)
 if run(['git','show','HEAD:README.txt'],cwd=b)!='service=ticketlab\nport=18005':raise ValueError('Wrong conflict result')
+if run(['git','show','HEAD:EXTRA.txt'],cwd=b)!='support=email\nstatus=draft':raise ValueError('Lost independent change')
 record('git-local-remote-conflict',readme_agreed=True,both_extra_fragments=True,merge_commit=run(['git','rev-parse','HEAD'],cwd=b))
 run(['labctl','prepare','m05','--instance','m05-revert-a','--root',root,'--seed','417'])
 r=root/'m05-revert-a/repo'; readme=r/'README.txt'
@@ -88,7 +89,11 @@ record('git-revert-tag-index',tag_preserved=True,revert_preserved_history=True,u
 
 # Send real keyboard input through a PTY. These observations concern tools, not a novice pilot.
 def terminal(command,steps):
-    master,slave=pty.openpty();p=subprocess.Popen(command,cwd=BASE,env=env,stdin=slave,stdout=slave,stderr=slave,start_new_session=True);os.close(slave);output=b''
+    master,slave=pty.openpty()
+    fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',24,100,0,0))
+    def session():
+        os.setsid();fcntl.ioctl(slave,termios.TIOCSCTTY,0)
+    p=subprocess.Popen(command,cwd=BASE,env=env,stdin=slave,stdout=slave,stderr=slave,preexec_fn=session);os.close(slave);output=b''
     def drain(duration):
         nonlocal output
         until=time.monotonic()+duration
@@ -99,15 +104,19 @@ def terminal(command,steps):
     try:
         drain(0.8)
         for keys in steps:os.write(master,keys);drain(0.7)
-        p.wait(timeout=8);drain(0.2)
+        try:p.wait(timeout=8)
+        except subprocess.TimeoutExpired:
+            record('terminal-failure',command=command,terminal_tail=output[-4000:].decode(errors='replace'))
+            raise
+        drain(0.2)
         return p.returncode,output
     finally:
         if p.poll() is None:os.killpg(p.pid,signal.SIGTERM);p.wait(timeout=3)
         os.close(master)
-rc,out=terminal(['nano','note.txt'],[b'learner-edited-line',b'\x0f',b'\n',b'\x18'])
+rc,out=terminal(['nano','note.txt'],[b'learner-edited-line',b'\x0f',b'\r',b'\x18'])
 if rc or (BASE/'note.txt').read_text()!='learner-edited-line\n':raise ValueError('nano keyboard save failed')
 (BASE/'reading.log').write_text(''.join(f'line {n}\n' for n in range(80))+'READY_MARKER\n')
-rc,out=terminal(['less','reading.log'],[b'/READY_MARKER\n',b'q'])
+rc,out=terminal(['less','reading.log'],[b'/READY_MARKER\r',b'q'])
 if rc or b'READY_MARKER' not in out:raise ValueError('less keyboard search failed')
 record('interactive-nano-less',nano_saved=True,less_search_and_exit=True)
 

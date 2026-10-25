@@ -2,6 +2,9 @@ name: TicketLab build and learner artifact
 on:
   push:
     branches: [main, codex/devops-finalize-20261026]
+    paths-ignore:
+      - qa/learner-finalize.py
+      - .github/workflows/learner-finalize.yml
   workflow_dispatch:
 permissions:
   contents: read
